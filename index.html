@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>Luna — Period Tracker</title>
+<style>
+/* ───────── RESET ───────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0a;--surface:#1a1a2e;--surface2:#16213e;--card:#1e1e3a;
+  --text:#f0e6f6;--text-dim:#9d8cae;--pink:#ec4899;--pink-light:#f472b6;
+  --purple:#a855f7;--purple-light:#c084fc;--rose:#fb7185;
+  --green:#34d399;--amber:#fbbf24;--red:#f87171;
+  --radius:16px;--radius-sm:10px;
+}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:var(--bg);color:var(--text);-webkit-tap-highlight-color:transparent;
+  -webkit-font-smoothing:antialiased;
+}
+.app{height:100vh;display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:relative;overflow:hidden;background:var(--bg)}
+
+/* ───────── HEADER ───────── */
+.header{padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.header-left{display:flex;align-items:center;gap:12px}
+.moon-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--pink),var(--purple));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px}
+.app-title{font-size:22px;font-weight:700;background:linear-gradient(135deg,var(--pink-light),var(--purple-light));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header-right{display:flex;gap:8px}
+.icon-btn{width:38px;height:38px;border-radius:50%;border:none;background:var(--surface);color:var(--text-dim);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.icon-btn:hover,.icon-btn:active{background:var(--surface2);color:var(--text)}
+
+/* ───────── MAIN CONTENT ───────── */
+.main{flex:1;overflow-y:auto;padding:16px 16px 8px;-webkit-overflow-scrolling:touch;scroll-behavior:smooth}
+.main::-webkit-scrollbar{width:4px}
+.main::-webkit-scrollbar-thumb{background:var(--surface2);border-radius:4px}
+
+/* ───────── CYCLE RING ───────── */
+.cycle-ring{display:flex;flex-direction:column;align-items:center;padding:10px 0 16px;position:relative}
+.ring-container{position:relative;width:180px;height:180px}
+.ring-svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring-bg{fill:none;stroke:var(--surface2);stroke-width:6}
+.ring-progress{fill:none;stroke:url(#ringGrad);stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset 0.8s ease}
+.ring-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
+.ring-day{font-size:44px;font-weight:800;background:linear-gradient(135deg,var(--pink-light),var(--purple-light));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1}
+.ring-label{font-size:13px;color:var(--text-dim);margin-top:2px}
+.phase-badge{margin-top:10px;padding:5px 18px;border-radius:20px;font-size:13px;font-weight:600;background:linear-gradient(135deg,var(--pink),var(--purple));color:white}
+
+/* ───────── STATS ROW ───────── */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.stat{background:var(--surface);border-radius:var(--radius-sm);padding:10px 6px;text-align:center;border:1px solid rgba(236,72,153,.1)}
+.stat-value{font-size:18px;font-weight:700;color:var(--text)}
+.stat-label{font-size:10px;color:var(--text-dim);margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
+
+/* ───────── SECTION ───────── */
+.section{margin-bottom:14px}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.section-title{font-size:16px;font-weight:600;display:flex;align-items:center;gap:8px}
+.section-title .emoji{font-size:18px}
+
+/* ───────── CALENDAR ───────── */
+.calendar-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.calendar-nav .month-year{font-size:16px;font-weight:600}
+.cal-nav-btn{background:var(--surface);border:none;color:var(--text);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.cal-nav-btn:active{background:var(--surface2)}
+.weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px}
+.weekday{text-align:center;font-size:11px;color:var(--text-dim);font-weight:500;padding:4px 0}
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;position:relative;border:2px solid transparent}
+.day.today{font-weight:700;color:var(--pink);border-color:var(--pink)}
+.day.period{background:var(--pink);color:white;font-weight:700}
+.day.period-start{background:linear-gradient(135deg,var(--pink),var(--rose));color:white;font-weight:700;box-shadow:0 0 12px rgba(236,72,153,.4)}
+.day.fertile{background:rgba(168,85,247,.2);color:var(--purple-light);border-color:rgba(168,85,247,.3)}
+.day.ovulation{background:var(--purple);color:white;font-weight:700;box-shadow:0 0 12px rgba(168,85,247,.4)}
+.day.predicted{background:rgba(236,72,153,.12);color:var(--pink-light);border:2px dashed rgba(236,72,153,.3)}
+.day.other-month{color:var(--text-dim);opacity:.35}
+.day:active{transform:scale(.92)}
+
+/* ───────── SYMPTOM LOG ───────── */
+.symptom-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.symptom-btn{background:var(--surface);border:1px solid rgba(236,72,153,.1);border-radius:var(--radius-sm);padding:8px 4px;text-align:center;cursor:pointer;transition:all .2s}
+.symptom-btn .sym-icon{font-size:22px;display:block;margin-bottom:2px}
+.symptom-btn .sym-label{font-size:10px;color:var(--text-dim)}
+.symptom-btn.active{background:rgba(236,72,153,.15);border-color:var(--pink)}
+.symptom-btn.active .sym-label{color:var(--pink)}
+.symptom-btn:active{transform:scale(.93)}
+
+/* ───────── MOOD ───────── */
+.mood-row{display:flex;gap:8px;justify-content:center}
+.mood-btn{width:44px;height:44px;border-radius:50%;border:2px solid transparent;background:var(--surface);font-size:20px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center}
+.mood-btn.active{border-color:var(--pink);background:rgba(236,72,153,.15);transform:scale(1.1)}
+.mood-btn:active{transform:scale(.9)}
+.mood-label{text-align:center;font-size:11px;color:var(--text-dim);margin-top:8px;min-height:16px}
+
+/* ───────── NOTES ───────── */
+.notes-input{width:100%;background:var(--surface);border:1px solid rgba(236,72,153,.1);border-radius:var(--radius-sm);padding:12px 14px;color:var(--text);font-size:14px;font-family:inherit;resize:none;min-height:60px;transition:border-color .2s}
+.notes-input:focus{outline:none;border-color:var(--pink)}
+
+/* ───────── INSIGHTS ───────── */
+.insight-card{background:var(--surface);border-radius:var(--radius-sm);padding:14px;border:1px solid rgba(236,72,153,.08);margin-bottom:8px;display:flex;align-items:flex-start;gap:10px}
+.insight-icon{font-size:20px;flex-shrink:0;margin-top:2px}
+.insight-text{font-size:13px;line-height:1.5;color:var(--text-dim)}
+.insight-text strong{color:var(--text)}
+
+/* ───────── BOTTOM NAV ───────── */
+.bottom-nav{flex-shrink:0;display:flex;background:var(--surface);border-top:1px solid rgba(236,72,153,.08);padding:6px 0 max(6px,env(safe-area-inset-bottom));border-radius:20px 20px 0 0;margin:0 8px}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;border:none;background:none;color:var(--text-dim);font-size:10px;cursor:pointer;transition:color .2s;border-radius:12px}
+.nav-item .nav-icon{font-size:22px;transition:transform .2s}
+.nav-item.active{color:var(--pink)}
+.nav-item.active .nav-icon{transform:scale(1.1)}
+.nav-item:active{transform:scale(.95)}
+
+/* ───────── SECTIONS (tab pages) ───────── */
+.tab-page{display:none;animation:fadeIn .3s ease}
+.tab-page.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ───────── CYCLE HISTORY ───────── */
+.history-list{display:flex;flex-direction:column;gap:6px}
+.history-item{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--surface);border-radius:var(--radius-sm);border:1px solid rgba(236,72,153,.06)}
+.history-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;background:var(--pink)}
+.history-date{font-size:13px;font-weight:500;white-space:nowrap}
+.history-duration{font-size:12px;color:var(--text-dim);margin-left:auto}
+.history-flow{font-size:12px;color:var(--text-dim);margin-left:8px}
+.delete-btn{background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;opacity:.5;padding:4px;transition:opacity .2s}
+.delete-btn:hover,.delete-btn:active{opacity:1}
+
+/* ───────── SETTINGS ───────── */
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid rgba(236,72,153,.06)}
+.setting-label{font-size:14px}
+.setting-desc{font-size:11px;color:var(--text-dim);margin-top:2px}
+.toggle{width:44px;height:24px;background:var(--surface2);border-radius:12px;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0}
+.toggle.on{background:var(--pink)}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:white;transition:transform .2s}
+.toggle.on::after{transform:translateX(20px)}
+.range-input{width:100%;-webkit-appearance:none;height:4px;background:var(--surface2);border-radius:2px;margin-top:8px}
+.range-input::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--pink);cursor:pointer}
+.range-label{font-size:12px;color:var(--text-dim);margin-top:4px;text-align:right}
+
+/* ───────── MODAL ───────── */
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);backdrop-filter:blur(10px);z-index:100;display:none;align-items:flex-end;justify-content:center;animation:fadeIn .2s ease}
+.modal-overlay.show{display:flex}
+.modal{background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-width:480px;max-height:80vh;overflow-y:auto;padding:20px;animation:slideUp .3s ease;border-top:1px solid rgba(236,72,153,.1)}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-handle{width:36px;height:4px;background:var(--text-dim);border-radius:4px;margin:0 auto 16px;opacity:.4}
+.modal-title{font-size:18px;font-weight:700;margin-bottom:16px;text-align:center}
+
+/* ───────── EXPORT ───────── */
+.export-btn{width:100%;padding:12px;border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;margin-bottom:8px;background:var(--surface2);color:var(--text)}
+.export-btn.primary{background:linear-gradient(135deg,var(--pink),var(--purple));color:white}
+.export-btn:active{transform:scale(.97)}
+
+/* ───────── MISC ───────── */
+.empty-state{text-align:center;padding:30px 20px;color:var(--text-dim);font-size:14px}
+.empty-state .big-emoji{font-size:40px;display:block;margin-bottom:12px}
+.flex-between{display:flex;align-items:center;justify-content:space-between}
+.gap-8{gap:8px}
+.mt-8{margin-top:8px}
+.mb-8{margin-bottom:8px}
+.text-center{text-align:center}
+.text-dim{color:var(--text-dim)}
+.text-sm{font-size:13px}
+
+/* ───────── SCROLLBAR ───────── */
+.main::-webkit-scrollbar{width:3px}
+.main::-webkit-scrollbar-thumb{background:var(--surface2);border-radius:4px}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-left">
+      <div class="moon-icon">🌙</div>
+      <span class="app-title">Luna</span>
+    </div>
+    <div class="header-right">
+      <button class="icon-btn" onclick="exportData()" title="Export Data">📤</button>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="main" id="mainContent">
+
+    <!-- TAB: TRACKER -->
+    <div class="tab-page active" id="tab-tracker">
+      <!-- Cycle Ring -->
+      <div class="cycle-ring">
+        <div class="ring-container">
+          <svg class="ring-svg" viewBox="0 0 100 100">
+            <defs><linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#ec4899"/><stop offset="100%" stop-color="#a855f7"/></linearGradient></defs>
+            <circle class="ring-bg" cx="50" cy="50" r="42"/>
+            <circle class="ring-progress" id="ringProgress" cx="50" cy="50" r="42" stroke-dasharray="263.89" stroke-dashoffset="0"/>
+          </svg>
+          <div class="ring-center">
+            <div class="ring-day" id="cycleDay">--</div>
+            <div class="ring-label">Cycle Day</div>
+          </div>
+        </div>
+        <div class="phase-badge" id="phaseBadge">Loading...</div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats" id="statsContainer">
+        <div class="stat"><div class="stat-value" id="statCycle">--</div><div class="stat-label">Cycle</div></div>
+        <div class="stat"><div class="stat-value" id="statPeriodLen">--</div><div class="stat-label">Period Len</div></div>
+        <div class="stat"><div class="stat-value" id="statCycleLen">--</div><div class="stat-label">Cycle Len</div></div>
+        <div class="stat"><div class="stat-value" id="statNext">--</div><div class="stat-label">Next in</div></div>
+      </div>
+
+      <!-- Calendar -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title"><span class="emoji">📅</span> Calendar</div>
+          <button class="icon-btn" onclick="openLogModal()" title="Log period">✏️</button>
+        </div>
+        <div class="calendar-nav">
+          <button class="cal-nav-btn" onclick="changeMonth(-1)">◀</button>
+          <span class="month-year" id="monthYear">---</span>
+          <button class="cal-nav-btn" onclick="changeMonth(1)">▶</button>
+        </div>
+        <div class="weekdays">
+          <div class="weekday">Sun</div><div class="weekday">Mon</div><div class="weekday">Tue</div>
+          <div class="weekday">Wed</div><div class="weekday">Thu</div><div class="weekday">Fri</div><div class="weekday">Sat</div>
+        </div>
+        <div class="days" id="calendarDays"></div>
+      </div>
+    </div>
+
+    <!-- TAB: LOG -->
+    <div class="tab-page" id="tab-log">
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title"><span class="emoji">🩸</span> Log Today</div>
+          <span class="text-dim text-sm" id="logDate">---</span>
+        </div>
+
+        <div class="section-title text-sm mb-8">Flow</div>
+        <div class="symptom-grid" style="grid-template-columns:repeat(4,1fr)" id="flowSelector">
+          <button class="symptom-btn" data-flow="light" onclick="toggleFlow(this)"><span class="sym-icon">💧</span><span class="sym-label">Light</span></button>
+          <button class="symptom-btn" data-flow="medium" onclick="toggleFlow(this)"><span class="sym-icon">💦</span><span class="sym-label">Medium</span></button>
+          <button class="symptom-btn" data-flow="heavy" onclick="toggleFlow(this)"><span class="sym-icon">🌊</span><span class="sym-label">Heavy</span></button>
+          <button class="symptom-btn" data-flow="none" onclick="toggleFlow(this)"><span class="sym-icon">✖️</span><span class="sym-label">None</span></button>
+        </div>
+
+        <div class="section-title text-sm mb-8 mt-8">Symptoms</div>
+        <div class="symptom-grid" id="symptomSelector">
+          <button class="symptom-btn" data-sym="cramps" onclick="toggleSym(this)"><span class="sym-icon">😣</span><span class="sym-label">Cramps</span></button>
+          <button class="symptom-btn" data-sym="headache" onclick="toggleSym(this)"><span class="sym-icon">🤕</span><span class="sym-label">Headache</span></button>
+          <button class="symptom-btn" data-sym="fatigue" onclick="toggleSym(this)"><span class="sym-icon">😴</span><span class="sym-label">Fatigue</span></button>
+          <button class="symptom-btn" data-sym="bloating" onclick="toggleSym(this)"><span class="sym-icon">🫃</span><span class="sym-label">Bloating</span></button>
+          <button class="symptom-btn" data-sym="acne" onclick="toggleSym(this)"><span class="sym-icon">🔴</span><span class="sym-label">Acne</span></button>
+          <button class="symptom-btn" data-sym="cravings" onclick="toggleSym(this)"><span class="sym-icon">🍫</span><span class="sym-label">Cravings</span></button>
+          <button class="symptom-btn" data-sym="tender" onclick="toggleSym(this)"><span class="sym-icon">🥹</span><span class="sym-label">Tender</span></button>
+          <button class="symptom-btn" data-sym="backache" onclick="toggleSym(this)"><span class="sym-icon">🔙</span><span class="sym-label">Backache</span></button>
+          <button class="symptom-btn" data-sym="nausea" onclick="toggleSym(this)"><span class="sym-icon">🤢</span><span class="sym-label">Nausea</span></button>
+          <button class="symptom-btn" data-sym="insomnia" onclick="toggleSym(this)"><span class="sym-icon">🌙</span><span class="sym-label">Insomnia</span></button>
+        </div>
+
+        <div class="section-title text-sm mb-8 mt-8">Mood</div>
+        <div>
+          <div class="mood-row" id="moodSelector">
+            <button class="mood-btn" data-mood="great" onclick="setMood('great')">😊</button>
+            <button class="mood-btn" data-mood="good" onclick="setMood('good')">🙂</button>
+            <button class="mood-btn" data-mood="okay" onclick="setMood('okay')">😐</button>
+            <button class="mood-btn" data-mood="down" onclick="setMood('down')">😔</button>
+            <button class="mood-btn" data-mood="sad" onclick="setMood('sad')">😢</button>
+            <button class="mood-btn" data-mood="irritable" onclick="setMood('irritable')">😤</button>
+            <button class="mood-btn" data-mood="anxious" onclick="setMood('anxious')">😰</button>
+          </div>
+          <div class="mood-label" id="moodLabel">Tap a mood</div>
+        </div>
+
+        <div class="section-title text-sm mb-8 mt-8">Notes</div>
+        <textarea class="notes-input" id="logNotes" placeholder="How are you feeling today? Any additional notes..."></textarea>
+
+        <button class="export-btn primary mt-8" onclick="saveDailyLog()">💾 Save Today's Log</button>
+      </div>
+    </div>
+
+    <!-- TAB: INSIGHTS -->
+    <div class="tab-page" id="tab-insights">
+      <div class="section">
+        <div class="section-header"><div class="section-title"><span class="emoji">💡</span> Insights</div></div>
+        <div id="insightsContainer">
+          <div class="empty-state"><span class="big-emoji">📊</span>Track a few cycles to see your personalized insights</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header"><div class="section-title"><span class="emoji">📊</span> Cycle History</div></div>
+        <div id="historyContainer">
+          <div class="empty-state"><span class="big-emoji">📋</span>No cycles recorded yet</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: SETTINGS -->
+    <div class="tab-page" id="tab-settings">
+      <div class="section">
+        <div class="section-header"><div class="section-title"><span class="emoji">⚙️</span> Settings</div></div>
+
+        <div class="setting-row">
+          <div><div class="setting-label">Average Cycle Length</div><div class="setting-desc" id="settingCycleDesc">28 days</div></div>
+          <div><input type="range" class="range-input" id="avgCycleRange" min="21" max="45" value="28" oninput="updateCycleSetting(this.value)"><div class="range-label" id="avgCycleLabel">28 days</div></div>
+        </div>
+
+        <div class="setting-row">
+          <div><div class="setting-label">Period Duration</div><div class="setting-desc" id="settingPeriodDesc">5 days</div></div>
+          <div><input type="range" class="range-input" id="periodDurRange" min="2" max="10" value="5" oninput="updatePeriodSetting(this.value)"><div class="range-label" id="periodDurLabel">5 days</div></div>
+        </div>
+
+        <div class="setting-row">
+          <div><div class="setting-label">Notifications</div><div class="setting-desc">Get reminded about upcoming periods</div></div>
+          <div class="toggle" id="notifToggle" onclick="toggleNotif()"></div>
+        </div>
+
+        <div class="setting-row">
+          <div><div class="setting-label">Dark Mode</div><div class="setting-desc">Luna always looks good in dark 🌙</div></div>
+          <div class="toggle on" id="darkToggle" onclick="toggleDark()"></div>
+        </div>
+
+        <div class="section-title text-sm mb-8 mt-8">Data</div>
+        <button class="export-btn primary" onclick="exportData()">📤 Export Data (JSON)</button>
+        <button class="export-btn" onclick="document.getElementById('importInput').click()">📥 Import Data</button>
+        <input type="file" id="importInput" accept=".json" style="display:none" onchange="importData(event)">
+        <button class="export-btn" onclick="if(confirm('Clear ALL data? This cannot be undone!')) clearAllData()">🗑️ Clear All Data</button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-tab="tracker" onclick="switchTab('tracker')"><span class="nav-icon">🌙</span>Tracker</button>
+    <button class="nav-item" data-tab="log" onclick="switchTab('log')"><span class="nav-icon">📝</span>Log</button>
+    <button class="nav-item" data-tab="insights" onclick="switchTab('insights')"><span class="nav-icon">💡</span>Insights</button>
+    <button class="nav-item" data-tab="settings" onclick="switchTab('settings')"><span class="nav-icon">⚙️</span>Settings</button>
+  </nav>
+
+</div>
+
+<!-- LOG PERIOD MODAL -->
+<div class="modal-overlay" id="logModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📅 Log a Period</div>
+    <div class="text-center mb-8 text-dim text-sm">Select the dates of your last period</div>
+    <div class="flex-between gap-8" style="margin-bottom:12px">
+      <input type="date" id="modalStart" class="notes-input" style="flex:1;min-height:44px">
+      <span class="text-dim" style="padding:8px 4px">→</span>
+      <input type="date" id="modalEnd" class="notes-input" style="flex:1;min-height:44px">
+    </div>
+    <button class="export-btn primary" onclick="savePeriodFromModal()">✅ Save Period</button>
+    <button class="export-btn" onclick="closeModal()">Cancel</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  LUNA — Full Period Tracker PWA
+// ============================================================
+
+const STORAGE_KEY = 'luna_data';
+const SETTINGS_KEY = 'luna_settings';
+const today = () => new Date().toISOString().split('T')[0];
+const daysBetween = (a,b) => Math.round((new Date(b)-new Date(a))/(86400000));
+const addDays = (d,n) => {let r=new Date(d);r.setDate(r.getDate()+n);return r.toISOString().split('T')[0]};
+const formatDate = (d) => {const dt=new Date(d);return dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})};
+
+// ─── State ───
+let state = loadState();
+let settings = loadSettings();
+let currentMood = null;
+let currentFlow = null;
+let currentSymptoms = [];
+let calendarMonth = new Date().getMonth();
+let calendarYear = new Date().getFullYear();
+
+// ─── Persistence ───
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : { periods: [], logs: {} };
+  } catch { return { periods: [], logs: {} }; }
+}
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    return raw ? JSON.parse(raw) : { avgCycle: 28, periodDur: 5, notifications: false };
+  } catch { return { avgCycle: 28, periodDur: 5, notifications: false }; }
+}
+function saveSettings() {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+// ─── Init ───
+document.addEventListener('DOMContentLoaded', () => {
+  renderAll();
+  document.getElementById('logDate').textContent = formatDate(today());
+
+  // Register service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+  }
+
+  // Request notification permission
+  if (settings.notifications && 'Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+});
+
+// ─── Render All ───
+function renderAll() {
+  renderCalendar();
+  renderCycleRing();
+  renderStats();
+  renderHistory();
+  renderInsights();
+  updateSettingsUI();
+  checkNotification();
+}
+
+// ─── Cycle Ring ───
+function renderCycleRing() {
+  const todayStr = today();
+  const periods = state.periods.sort();
+  let currentCycleStart = null;
+  let cycleDay = 0;
+  let phase = 'Tracking...';
+
+  for (let i = periods.length - 1; i >= 0; i--) {
+    if (periods[i] <= todayStr) { currentCycleStart = periods[i]; break; }
+  }
+
+  if (currentCycleStart) {
+    cycleDay = daysBetween(currentCycleStart, todayStr) + 1;
+  }
+
+  // Find cycle number
+  let cycleNum = 1;
+  const sortedPeriods = [...periods].sort((a,b)=>new Date(a)-new Date(b));
+  for (let i = 0; i < sortedPeriods.length; i++) {
+    if (sortedPeriods[i] === currentCycleStart) { cycleNum = i + 1; break; }
+  }
+
+  // Determine phase
+  if (isInPeriod(todayStr)) {
+    phase = '🩸 Period';
+  } else if (currentCycleStart) {
+    const day = daysBetween(currentCycleStart, todayStr);
+    const fertileStart = 10;
+    const fertileEnd = 17;
+    const ovulationDay = 14;
+    if (day >= fertileStart && day <= fertileEnd) {
+      phase = day === ovulationDay ? '🥚 Ovulation' : '🌱 Fertile Window';
+    } else if (day > 21) {
+      phase = '🌙 Luteal Phase';
+    } else if (day > 0 && day < fertileStart) {
+      phase = '🌸 Follicular Phase';
+    } else {
+      phase = '🔄 New Cycle';
+    }
+  }
+
+  document.getElementById('cycleDay').textContent = cycleDay || '--';
+  document.getElementById('phaseBadge').textContent = phase;
+
+  // Ring progress (28 day cycle)
+  const circumference = 263.89;
+  const maxCycle = settings.avgCycle;
+  const offset = cycleDay > 0 ? circumference * (1 - Math.min(cycleDay, maxCycle) / maxCycle) : circumference;
+  document.getElementById('ringProgress').style.strokeDashoffset = offset;
+}
+
+// ─── Stats ───
+function renderStats() {
+  const periods = [...state.periods].sort();
+  const todayStr = today();
+
+  // Cycle count
+  document.getElementById('statCycle').textContent = periods.length || 0;
+
+  // Average period length
+  let avgPeriodLen = settings.periodDur;
+  if (periods.length >= 2) {
+    // Calculate from actual data
+    const sorted = [...state.periods].sort();
+    let sum = 0; let count = 0;
+    // Simple heuristic: count consecutive period days
+    const periodDays = sorted.filter(d => isInPeriod(d, sorted));
+    // Use setting as default
+    avgPeriodLen = settings.periodDur;
+  }
+  document.getElementById('statPeriodLen').textContent = avgPeriodLen + 'd';
+
+  // Average cycle length
+  document.getElementById('statCycleLen').textContent = settings.avgCycle + 'd';
+
+  // Next period prediction
+  if (periods.length > 0) {
+    const lastStart = periods[periods.length - 1];
+    const predictedNext = addDays(lastStart, settings.avgCycle);
+    const daysUntil = daysBetween(todayStr, predictedNext);
+    document.getElementById('statNext').textContent = daysUntil > 0 ? daysUntil + 'd' : 'Now!';
+  } else {
+    document.getElementById('statNext').textContent = '--';
+  }
+}
+
+// ─── Calendar ───
+function renderCalendar() {
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('monthYear').textContent = monthNames[calendarMonth] + ' ' + calendarYear;
+
+  const firstDay = new Date(calendarYear, calendarMonth, 1).getDay();
+  const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+  const todayStr = today();
+  const container = document.getElementById('calendarDays');
+  let html = '';
+
+  // Empty cells for days before 1st
+  for (let i = 0; i < firstDay; i++) {
+    html += '<div class="day other-month"></div>';
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const isToday = dateStr === todayStr;
+    const isPeriod = isInPeriod(dateStr);
+    const isPeriodStart = state.periods.includes(dateStr);
+    const isPredicted = isPredictedPeriod(dateStr);
+    const isFertile = isInFertileWindow(dateStr);
+    const isOvulation = isOvulationDay(dateStr);
+
+    let cls = 'day';
+    if (isToday) cls += ' today';
+    if (isPeriod) cls += ' period';
+    if (isPeriodStart) cls += ' period-start';
+    if (isPredicted && !isPeriod) cls += ' predicted';
+    if (isFertile && !isPeriod) cls += ' fertile';
+    if (isOvulation) cls += ' ovulation';
+
+    html += `<div class="${cls}" onclick="dayClick('${dateStr}')">${d}</div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+function isInPeriod(dateStr, periods) {
+  const p = periods || state.periods;
+  const sorted = [...p].sort();
+  for (let i = 0; i < sorted.length; i++) {
+    if (dateStr === sorted[i]) return true;
+    // Check if within a period range (consecutive days)
+    if (i > 0) {
+      const prev = sorted[i - 1];
+      const curr = sorted[i];
+      const diff = daysBetween(prev, curr);
+      if (diff <= settings.periodDur && dateStr > prev && dateStr < curr) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function isPredictedPeriod(dateStr) {
+  const sorted = [...state.periods].sort();
+  if (sorted.length === 0) return false;
+  const todayStr = today();
+  if (dateStr <= todayStr) return false;
+
+  // Predict based on last period + cycle length
+  const lastStart = sorted[sorted.length - 1];
+  const nextStart = addDays(lastStart, settings.avgCycle);
+
+  if (dateStr >= nextStart && dateStr < addDays(nextStart, settings.periodDur)) {
+    // Don't mark if we already have a period logged near there
+    for (const p of sorted) {
+      if (daysBetween(nextStart, p) <= 3) return false;
+    }
+    return true;
+  }
+  return false;
+}
+
+function isInFertileWindow(dateStr) {
+  const sorted = [...state.periods].sort();
+  if (sorted.length === 0) return false;
+  const lastStart = sorted[sorted.length - 1];
+  const nextStart = addDays(lastStart, settings.avgCycle);
+  const ovulationDay = addDays(lastStart, settings.avgCycle - 14);
+  const fStart = addDays(ovulationDay, -5);
+  const fEnd = addDays(ovulationDay, 1);
+  return dateStr >= fStart && dateStr <= fEnd && !isInPeriod(dateStr);
+}
+
+function isOvulationDay(dateStr) {
+  const sorted = [...state.periods].sort();
+  if (sorted.length === 0) return false;
+  const lastStart = sorted[sorted.length - 1];
+  const ovulationDay = addDays(lastStart, settings.avgCycle - 14);
+  return dateStr === ovulationDay;
+}
+
+function changeMonth(delta) {
+  calendarMonth += delta;
+  if (calendarMonth > 11) { calendarMonth = 0; calendarYear++; }
+  if (calendarMonth < 0) { calendarMonth = 11; calendarYear--; }
+  renderCalendar();
+}
+
+function dayClick(dateStr) {
+  // Quick action: if it's a period day, remove it; otherwise add it
+  if (dateStr > today()) return;
+  const idx = state.periods.indexOf(dateStr);
+  if (idx >= 0) {
+    state.periods.splice(idx, 1);
+  } else {
+    state.periods.push(dateStr);
+  }
+  state.periods = [...new Set(state.periods)];
+  saveState();
+  renderAll();
+}
+
+// ─── Log Tab ───
+function toggleFlow(el) {
+  document.querySelectorAll('#flowSelector .symptom-btn').forEach(b => b.classList.remove('active'));
+  if (currentFlow === el.dataset.flow) {
+    currentFlow = null;
+  } else {
+    el.classList.add('active');
+    currentFlow = el.dataset.flow;
+  }
+}
+
+function toggleSym(el) {
+  const sym = el.dataset.sym;
+  el.classList.toggle('active');
+  if (currentSymptoms.includes(sym)) {
+    currentSymptoms = currentSymptoms.filter(s => s !== sym);
+  } else {
+    currentSymptoms.push(sym);
+  }
+}
+
+function setMood(mood) {
+  document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('active'));
+  currentMood = mood;
+  document.querySelector(`.mood-btn[data-mood="${mood}"]`).classList.add('active');
+  const labels = {great:'Feeling amazing!',good:'Pretty good 😊',okay:'Just okay 😐',down:'A bit down 😔',sad:'Feeling sad 😢',irritable:'Irritable 😤',anxious:'Anxious 😰'};
+  document.getElementById('moodLabel').textContent = labels[mood] || 'Tap a mood';
+}
+
+function saveDailyLog() {
+  const logEntry = {
+    date: today(),
+    flow: currentFlow,
+    symptoms: [...currentSymptoms],
+    mood: currentMood,
+    notes: document.getElementById('logNotes').value,
+    timestamp: new Date().toISOString()
+  };
+
+  state.logs[today()] = logEntry;
+  saveState();
+  alert('✅ Log saved for ' + formatDate(today()));
+  switchTab('tracker');
+}
+
+// ─── Log Period Modal ───
+function openLogModal() {
+  document.getElementById('modalStart').value = '';
+  document.getElementById('modalEnd').value = '';
+  document.getElementById('logModal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('logModal').classList.remove('show');
+}
+
+function savePeriodFromModal() {
+  const start = document.getElementById('modalStart').value;
+  const end = document.getElementById('modalEnd').value;
+  if (!start || !end) { alert('Please select both start and end dates'); return; }
+  if (end < start) { alert('End date must be after start date'); return; }
+
+  let d = new Date(start);
+  const endD = new Date(end);
+  while (d <= endD) {
+    const ds = d.toISOString().split('T')[0];
+    if (!state.periods.includes(ds)) state.periods.push(ds);
+    d.setDate(d.getDate() + 1);
+  }
+  state.periods = [...new Set(state.periods)].sort();
+  saveState();
+  closeModal();
+  renderAll();
+  alert('✅ Period logged!');
+}
+
+// ─── History ───
+function renderHistory() {
+  const container = document.getElementById('historyContainer');
+  const sorted = [...state.periods].sort((a, b) => new Date(b) - new Date(a));
+  if (sorted.length === 0) {
+    container.innerHTML = '<div class="empty-state"><span class="big-emoji">📋</span>No cycles recorded yet</div>';
+    return;
+  }
+
+  // Group into cycles
+  const cycles = [];
+  let currentCycle = [];
+  sorted.forEach((d, i) => {
+    if (currentCycle.length === 0) {
+      currentCycle.push(d);
+    } else {
+      const prev = new Date(currentCycle[currentCycle.length - 1]);
+      const curr = new Date(d);
+      const diff = Math.round((prev - curr) / 86400000);
+      if (diff <= 2) {
+        currentCycle.push(d);
+      } else {
+        cycles.push([...currentCycle].sort());
+        currentCycle = [d];
+      }
+    }
+  });
+  if (currentCycle.length > 0) cycles.push([...currentCycle].sort());
+
+  let html = '';
+  cycles.slice(0, 12).forEach((cycle, idx) => {
+    const start = cycle[0];
+    const end = cycle[cycle.length - 1];
+    const duration = daysBetween(start, end) + 1;
+    html += `<div class="history-item">
+      <div class="history-dot"></div>
+      <div class="history-date">Cycle ${cycles.length - idx}: ${formatDate(start)}</div>
+      <div class="history-duration">${duration} days</div>
+      <button class="delete-btn" onclick="deleteCycle(${idx})">✕</button>
+    </div>`;
+  });
+  container.innerHTML = html;
+}
+
+function deleteCycle(index) {
+  if (!confirm('Delete this cycle?')) return;
+  const sorted = [...state.periods].sort();
+  // We need to figure out which dates belong to this cycle
+  // Simple approach: prompt for date range
+  const dateStr = prompt('Enter a date from this cycle to delete (YYYY-MM-DD):');
+  if (!dateStr) return;
+  state.periods = state.periods.filter(d => d !== dateStr);
+  saveState();
+  renderAll();
+}
+
+// ─── Insights ───
+function renderInsights() {
+  const container = document.getElementById('insightsContainer');
+  const sorted = [...state.periods].sort();
+  if (sorted.length < 3) {
+    container.innerHTML = '<div class="empty-state"><span class="big-emoji">📊</span>Track at least 3 periods to see insights ✨</div>';
+    return;
+  }
+
+  let html = '';
+
+  // Average cycle length from data
+  let totalCycle = 0; let cycleCount = 0;
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const diff = daysBetween(sorted[i], sorted[i + 1]);
+    if (diff >= 18 && diff <= 60) { // Sanity check
+      totalCycle += diff;
+      cycleCount++;
+    }
+  }
+  const avgCycle = cycleCount > 0 ? Math.round(totalCycle / cycleCount) : settings.avgCycle;
+
+  html += `<div class="insight-card">
+    <span class="insight-icon">📏</span>
+    <div class="insight-text"><strong>Average Cycle:</strong> ${avgCycle} days (based on ${cycleCount} cycles)</div>
+  </div>`;
+
+  // Period regularity
+  const variances = [];
+  for (let i = 1; i < sorted.length - 1; i++) {
+    const d1 = daysBetween(sorted[i - 1], sorted[i]);
+    const d2 = daysBetween(sorted[i], sorted[i + 1]);
+    variances.push(Math.abs(d1 - d2));
+  }
+  const avgVar = variances.length > 0 ? Math.round(variances.reduce((a, b) => a + b, 0) / variances.length) : 0;
+  const regularity = avgVar <= 2 ? 'Very Regular ✨' : avgVar <= 5 ? 'Regular ✅' : avgVar <= 8 ? 'Somewhat Variable 📊' : 'Variable 🔄';
+
+  html += `<div class="insight-card">
+    <span class="insight-icon">📊</span>
+    <div class="insight-text"><strong>Regularity:</strong> ${regularity} (variation: ~${avgVar} days)</div>
+  </div>`;
+
+  // Next prediction
+  const lastStart = sorted[sorted.length - 1];
+  const nextPredicted = addDays(lastStart, avgCycle);
+  const daysUntil = daysBetween(today(), nextPredicted);
+  if (daysUntil > 0) {
+    html += `<div class="insight-card">
+      <span class="insight-icon">🔮</span>
+      <div class="insight-text"><strong>Next Period:</strong> Predicted around <strong>${formatDate(nextPredicted)}</strong> (${daysUntil} days from now)</div>
+    </div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+// ─── Settings ───
+function updateCycleSetting(val) {
+  settings.avgCycle = parseInt(val);
+  document.getElementById('avgCycleLabel').textContent = val + ' days';
+  document.getElementById('settingCycleDesc').textContent = val + ' days';
+  saveSettings();
+  renderAll();
+}
+
+function updatePeriodSetting(val) {
+  settings.periodDur = parseInt(val);
+  document.getElementById('periodDurLabel').textContent = val + ' days';
+  document.getElementById('settingPeriodDesc').textContent = val + ' days';
+  saveSettings();
+  renderAll();
+}
+
+function updateSettingsUI() {
+  document.getElementById('avgCycleRange').value = settings.avgCycle;
+  document.getElementById('avgCycleLabel').textContent = settings.avgCycle + ' days';
+  document.getElementById('settingCycleDesc').textContent = settings.avgCycle + ' days';
+  document.getElementById('periodDurRange').value = settings.periodDur;
+  document.getElementById('periodDurLabel').textContent = settings.periodDur + ' days';
+  document.getElementById('settingPeriodDesc').textContent = settings.periodDur + ' days';
+  document.getElementById('notifToggle').classList.toggle('on', settings.notifications);
+  document.getElementById('darkToggle').classList.add('on');
+}
+
+function toggleNotif() {
+  settings.notifications = !settings.notifications;
+  document.getElementById('notifToggle').classList.toggle('on', settings.notifications);
+  saveSettings();
+  if (settings.notifications && 'Notification' in window) {
+    Notification.requestPermission();
+  }
+}
+
+function toggleDark() {
+  // Always dark — no toggle needed, but nice to have
+}
+
+function checkNotification() {
+  if (settings.notifications && 'Notification' in window && Notification.permission === 'granted') {
+    const sorted = [...state.periods].sort();
+    if (sorted.length > 0) {
+      const nextPredicted = addDays(sorted[sorted.length - 1], settings.avgCycle);
+      const daysUntil = daysBetween(today(), nextPredicted);
+      if (daysUntil === 1) {
+        new Notification('🌙 Luna', { body: 'Your period is predicted to start tomorrow!', icon: '/icon-192.png' });
+      }
+    }
+  }
+}
+
+// ─── Export / Import ───
+function exportData() {
+  const data = { periods: state.periods, logs: state.logs, settings, exportedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `luna_data_${today()}.json`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.periods) state.periods = data.periods;
+      if (data.logs) state.logs = data.logs;
+      if (data.settings) settings = { ...settings, ...data.settings };
+      saveState();
+      saveSettings();
+      renderAll();
+      alert('✅ Data imported successfully!');
+    } catch { alert('❌ Invalid file format'); }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function clearAllData() {
+  state = { periods: [], logs: {} };
+  saveState();
+  renderAll();
+  alert('🗑️ All data cleared');
+}
+
+// ─── Tab Switching ───
+function switchTab(tab) {
+  document.querySelectorAll('.tab-page').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.querySelector(`.nav-item[data-tab="${tab}"]`).classList.add('active');
+  // Update log date if switching to log tab
+  if (tab === 'log') {
+    document.getElementById('logDate').textContent = formatDate(today());
+    // Pre-fill if there's a log for today
+    const existing = state.logs[today()];
+    if (existing) {
+      currentMood = existing.mood;
+      // etc.
+    }
+  }
+  // Refresh insights when switching to that tab
+  if (tab === 'insights') renderInsights();
+}
+
+// ─── Request notification permission on any user interaction ───
+document.addEventListener('click', () => {
+  if (settings.notifications && 'Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}, { once: true });
+
+console.log('🌙 Luna — Period Tracker loaded');
+console.log(`📊 ${state.periods.length} periods recorded`);
+</script>
+</body>
+</html>
